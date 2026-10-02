@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>SENTRY TT — Guard Management System</title>
+  <style>
+    :root {
+      --bg-dark: #0b0d0f;
+      --bg-card: #14171c;
+      --bg-input: #1a1e24;
+      --border-color: #272c35;
+      --border-accent: #3a4250;
+      --text-main: #f0f2f5;
+      --text-muted: #8a94a6;
+      --primary-red: #da291c;
+      --primary-red-hover: #b82216;
+      --accent-white: #ffffff;
+      --signal-green: #00e676;
+      --signal-amber: #ffab00;
+      --signal-blue: #29b6f6;
+      --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: "Courier New", Courier, monospace;
+      --safe-area-top: env(safe-area-inset-top, 0px);
+      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .night-ops {
+      --bg-dark: #000000;
+      --bg-card: #080808;
+      --bg-input: #101010;
+      --border-color: #ff2200;
+      --border-accent: #ff4400;
+      --text-main: #ff4400;
+      --text-muted: #aa2200;
+      --primary-red: #ff0000;
+      --signal-green: #ff6600;
+      --signal-amber: #ffaa00;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    input, textarea, select {
+      user-select: text;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-stack);
+      font-size: 14px;
+      line-height: 1.4;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(218, 41, 28, 0.03) 0%, transparent 80%),
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+    }
+
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      padding-top: var(--safe-area-top);
+      padding-bottom: var(--safe-area-bottom);
+    }
+
+    /* HEADER */
+    header {
+      background: rgba(20, 23, 28, 0.95);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      backdrop-filter: blur(5px);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .brand-title {
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: 1.5px;
+      color: var(--accent-white);
+      text-transform: uppercase;
+    }
+
+    .clock-group {
+      text-align: right;
+      font-family: var(--font-mono);
+    }
+
+    .live-clock {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--text-main);
+    }
+
+    .tz-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    /* CONTENT AREA */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+      padding: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* NAV BAR */
+    nav {
+      background: rgba(13, 15, 18, 0.98);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 0;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      width: 20%;
+      min-height: 48px;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .nav-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .nav-btn.active {
+      color: var(--primary-red);
+    }
+
+    /* TACTICAL CARDS */
+    .tactical-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 14px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+
+    .tactical-card::before, .tactical-card::after {
+      content: "";
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-color: var(--border-accent);
+      border-style: solid;
+      pointer-events: none;
+    }
+
+    .tactical-card::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+    .tactical-card::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* FORM ELEMENTS */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      min-height: 48px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary-red);
+    }
+
+    .btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      min-height: 48px;
+      width: 100%;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary-red);
+      border-color: var(--primary-red);
+      color: var(--accent-white);
+    }
+
+    .btn-primary:active {
+      background: var(--primary-red-hover);
+    }
+
+    .btn-sos {
+      background: linear-gradient(135deg, #da291c 0%, #800a00 100%);
+      border: 1px solid #ff4433;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      box-shadow: 0 0 15px rgba(218, 41, 28, 0.4);
+      animation: pulseAlert 2s infinite;
+    }
+
+    @keyframes pulseAlert {
+      0% { box-shadow: 0 0 0 0 rgba(218, 41, 28, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(218, 41, 28, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(218, 41, 28, 0); }
+    }
+
+    .btn-sm {
+      min-height: 36px;
+      padding: 6px 12px;
+      font-size: 10px;
+      width: auto;
+    }
+
+    /* CHIPS & STATUS */
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 2px;
+      font-size: 9px;
+      font-weight: 900;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .chip-green { background: rgba(0, 230, 118, 0.15); color: var(--signal-green); border: 1px solid var(--signal-green); }
+    .chip-amber { background: rgba(255, 171, 0, 0.15); color: var(--signal-amber); border: 1px solid var(--signal-amber); }
+    .chip-red { background: rgba(218, 41, 28, 0.15); color: var(--primary-red); border: 1px solid var(--primary-red); }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* EMPTY STATES */
+    .empty-state {
+      text-align: center;
+      padding: 30px 15px;
+      color: var(--text-muted);
+      border: 1px dashed var(--border-color);
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+
+    .empty-state svg {
+      width: 40px;
+      height: 40px;
+      fill: var(--text-muted);
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* EMERGENCY DIALER */
+    .emergency-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .em-btn {
+      background: rgba(218, 41, 28, 0.1);
+      border: 1px solid var(--primary-red);
+      color: var(--accent-white);
+      padding: 10px 4px;
+      text-align: center;
+      border-radius: 4px;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .em-num {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--primary-red);
+    }
+
+    .em-label {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* SCANLINE EFFECT FOR LOGIN */
+    .scanline-container {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scanline-container::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3) 51%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-accent);
+      width: 100%;
+      max-width: 450px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 4px;
+      padding: 16px;
+    }
+
+    /* PRINT / SHARE LAYOUT */
+    @media print {
+      body { background: #fff; color: #000; }
+      nav, header, .btn, .no-print { display: none !important; }
+      main { overflow: visible; padding: 0; }
+      .tactical-card { border: 1px solid #000; background: #fff; color: #000; }
+      .card-title, label { color: #000; }
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+  <!-- HEADER -->
+  <header>
+    <div class="brand-group">
+      <svg class="logo-svg" viewBox="0 0 100 100">
+        <path d="M50 5 L90 20 L90 55 C90 75 50 95 50 95 C50 95 10 75 10 55 L10 20 Z" fill="none" stroke="#da291c" stroke-width="6"/>
+        <circle cx="50" cy="45" r="20" fill="none" stroke="#ffffff" stroke-width="3"/>
+        <line x1="50" y1="15" x2="50" y2="75" stroke="#da291c" stroke-width="3"/>
+        <line x1="20" y1="45" x2="80" y2="45" stroke="#da291c" stroke-width="3"/>
+      </svg>
+      <span class="brand-title">SENTRY TT</span>
+    </div>
+    <div class="clock-group">
+      <div id="clock-display" class="live-clock">00:00:00</div>
+      <div class="tz-label">TTT/AST (UTC-4)</div>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main id="main-content">
+
+    <!-- AUTH SCREEN -->
+    <div id="screen-auth" class="screen active scanline-container">
+      <div style="text-align: center; margin: 20px 0 30px;">
+        <svg class="logo-svg" style="width:60px; height:60px;" viewBox="0 0 100 100">
+          <path d="M50 5 L90 20 L90 55 C90 75 50 95 50 95 C50 95 10 75 10 55 L10 20 Z" fill="none" stroke="#da291c" stroke-width="6"/>
+          <circle cx="50" cy="45" r="20" fill="none" stroke="#ffffff" stroke-width="3"/>
+          <line x1="50" y1="15" x2="50" y2="75" stroke="#da291c" stroke-width="3"/>
+          <line x1="20" y1="45" x2="80" y2="45" stroke="#da291c" stroke-width="3"/>
+        </svg>
+        <h2 style="font-size:20px; font-weight:900; letter-spacing:2px; margin-top:10px;">SENTRY TT</h2>
+        <p style="font-size:10px; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase;">Tactical Guard Management System</p>
+      </div>
+
+      <div class="tactical-card">
+        <div id="auth-tabs" style="display:flex; gap:10px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+          <button id="tab-login-btn" class="btn btn-sm btn-primary" style="flex:1" onclick="switchAuthTab('login')">LOGIN</button>
+          <button id="tab-signup-btn" class="btn btn-sm" style="flex:1" onclick="switchAuthTab('signup')">SIGN UP</button>
+        </div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+          <div id="signup-fields" style="display:none;">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="auth-name" autocomplete="name" placeholder="e.g. Officer Wayne Smith">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="auth-email" required autocomplete="email" placeholder="operator@sentry.tt">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="auth-password" required placeholder="••••••••">
+          </div>
+          <div id="signup-confirm-field" class="form-group" style="display:none;">
+            <label>Confirm Password</label>
+            <input type="password" id="auth-password-confirm" placeholder="••••••••">
+          </div>
+          <div id="auth-error" style="color:var(--primary-red); font-size:11px; margin-bottom:10px; display:none; font-weight:bold;"></div>
+          <button type="submit" id="auth-submit-btn" class="btn btn-primary">ENTER SYSTEM</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="screen-dashboard" class="screen">
+      <!-- EMERGENCY PANIC -->
+      <button class="btn btn-sos" style="margin-bottom:14px;" onclick="openIncidentModal(true)">
+        <svg style="width:20px;height:20px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V10h2v2z"/></svg>
+        LOG CRITICAL INCIDENT
+      </button>
+
+      <!-- BACKUP ALERT -->
+      <div id="backup-reminder" class="tactical-card" style="display:none; border-color:var(--signal-amber);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="color:var(--signal-amber); font-weight:bold; font-size:11px;">⚠️ BACKUP REQUIRED (&gt;7 DAYS)</span>
+          <button class="btn btn-sm" onclick="exportData()">EXPORT</button>
+        </div>
+      </div>
+
+      <!-- METRICS GRID -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+        <div class="tactical-card" style="margin:0;">
+          <div class="card-title">ON DUTY</div>
+          <div id="metric-guards-count" class="mono" style="font-size:24px; font-weight:900; color:var(--signal-green);">0</div>
+        </div>
+        <div class="tactical-card" style="margin:0;">
+          <div class="card-title">INCIDENTS</div>
+          <div id="metric-incidents-count" class="mono" style="font-size:24px; font-weight:900; color:var(--primary-red);">0</div>
+        </div>
+      </div>
+
+      <!-- QUICK DIAL EMERGENCY -->
+      <div class="tactical-card">
+        <div class="card-title">T&amp;T EMERGENCY CONTACTS</div>
+        <div class="emergency-grid">
+          <a href="tel:999" class="em-btn"><span class="em-num">999</span><span class="em-label">POLICE</span></a>
+          <a href="tel:990" class="em-btn"><span class="em-num">990</span><span class="em-label">FIRE</span></a>
+          <a href="tel:811" class="em-btn"><span class="em-num">811</span><span class="em-label">AMBULANCE</span></a>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="tel" id="control-room-num" placeholder="Control Room +1 (868)..." onchange="saveControlNum(this.value)">
+          <button class="btn btn-sm" onclick="callControlNum()">CALL</button>
+        </div>
+      </div>
+
+      <!-- ACTIVE ROSTER SUMMARY -->
+      <div class="tactical-card">
+        <div class="card-title">CURRENT ACTIVE SHIFTS</div>
+        <div id="dash-shifts-list"></div>
+      </div>
+    </div>
+
+    <!-- GUARDS SCREEN -->
+    <div id="screen-guards" class="screen">
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <input type="text" id="guard-search" placeholder="Search callsign, name, post..." oninput="renderGuards()">
+        <button class="btn btn-primary btn-sm" onclick="openGuardModal()">+ ADD</button>
+      </div>
+      <div id="guards-list"></div>
+    </div>
+
+    <!-- SITES SCREEN -->
+    <div id="screen-sites" class="screen">
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openSiteModal()">+ NEW CLIENT SITE</button>
+      </div>
+      <div id="sites-list"></div>
+    </div>
+
+    <!-- ROSTER / SHIFTS SCREEN -->
+    <div id="screen-roster" class="screen">
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openShiftModal()">+ SCHEDULE SHIFT</button>
+      </div>
+      <div id="roster-list"></div>
+    </div>
+
+    <!-- PATROLS SCREEN -->
+    <div id="screen-patrols" class="screen">
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openPatrolModal()">+ NEW PATROL ROUTE</button>
+      </div>
+      <div id="patrols-list"></div>
+    </div>
+
+    <!-- INCIDENTS SCREEN -->
+    <div id="screen-incidents" class="screen">
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openIncidentModal(false)">+ LOG NEW INCIDENT</button>
+      </div>
+      <div id="incidents-list"></div>
+    </div>
+
+    <!-- ACTIVITY LOG SCREEN -->
+    <div id="screen-activity" class="screen">
+      <div class="tactical-card">
+        <div class="card-title">SYSTEM AUDIT TRAIL</div>
+        <div id="activity-log-list"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS / PROFILE SCREEN -->
+    <div id="screen-settings" class="screen">
+      <div class="tactical-card">
+        <div class="card-title">OPERATOR PROFILE</div>
+        <div class="form-group">
+          <label>Operator Name</label>
+          <input type="text" id="settings-name">
+        </div>
+        <button class="btn btn-sm" style="margin-bottom:10px;" onclick="updateProfileName()">UPDATE NAME</button>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="settings-pass" placeholder="Minimum 8 characters">
+        </div>
+        <button class="btn btn-sm" onclick="updatePassword()">CHANGE PASSWORD</button>
+      </div>
+
+      <div class="tactical-card">
+        <div class="card-title">SYSTEM CONFIGURATION</div>
+        <button class="btn btn-sm" style="margin-bottom:10px;" onclick="toggleNightOps()">TOGGLE NIGHT OPS MODE</button>
+        <button class="btn btn-sm" style="margin-bottom:10px;" onclick="exportData()">EXPORT DATA BACKUP (JSON)</button>
+        <label class="btn btn-sm" style="margin-bottom:10px; text-align:center;">
+          IMPORT DATA BACKUP
+          <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
+        </label>
+        <button id="pwa-install-btn" class="btn btn-sm btn-primary" style="display:none; margin-bottom:10px;" onclick="triggerPWAInstall()">INSTALL APP TO HOME SCREEN</button>
+      </div>
+
+      <div class="tactical-card" style="border-color:var(--primary-red);">
+        <div class="card-title" style="color:var(--primary-red);">DANGER ZONE</div>
+        <button class="btn btn-sm" style="margin-bottom:10px; background:rgba(218,41,28,0.2);" onclick="handleLogout()">LOG OUT</button>
+        <button class="btn btn-sm" style="background:var(--primary-red); color:#fff;" onclick="deleteAccount()">DELETE ACCOUNT &amp; PURGE DATA</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- NAVIGATION BAR -->
+  <nav id="bottom-nav" style="display:none;">
+    <button class="nav-btn active" onclick="switchTab('dashboard')">
+      <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z"/></svg>
+      DASH
+    </button>
+    <button class="nav-btn" onclick="switchTab('guards')">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      GUARDS
+    </button>
+    <button class="nav-btn" onclick="switchTab('roster')">
+      <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+      ROSTER
+    </button>
+    <button class="nav-btn" onclick="switchTab('incidents')">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      INCIDENTS
+    </button>
+    <button class="nav-btn" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+      SYSTEM
+    </button>
+  </nav>
+</div>
+
+<!-- MODALS CONTAINER -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal-box" id="modal-content"></div>
+</div>
+
+<script>
+/* ==================== GLOBAL APP STATE & CONSTANTS ==================== */
+const TT_REGIONS = ["Port of Spain", "San Fernando", "Chaguanas", "Arima", "Point Fortin", "Couva", "Sangre Grande", "Tobago (Scarborough)", "Other"];
+let db = null;
+let currentUser = null;
+let deferredPrompt = null;
+let isSignUpMode = false;
+
+/* ==================== INDEXEDDB ENGINE ==================== */
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("SENTRY_TT_DB", 1);
+    request.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains("users")) d.createObjectStore("users", { keyPath: "email" });
+      if (!d.objectStoreNames.contains("guards")) d.createObjectStore("guards", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("sites")) d.createObjectStore("sites", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("shifts")) d.createObjectStore("shifts", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("patrols")) d.createObjectStore("patrols", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("incidents")) d.createObjectStore("incidents", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("activity")) d.createObjectStore("activity", { keyPath: "id" });
+    };
+    request.onsuccess = (e) => { db = e.target.result; resolve(); };
+    request.onerror = (e) => reject(e);
+  });
+}
+
+function dbTx(storeName, mode, callback) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, mode);
+    const store = tx.objectStore(storeName);
+    const req = callback(store);
+    tx.oncomplete = () => resolve(req ? req.result : null);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/* ==================== AUTHENTICATION & SECURITY ==================== */
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+  const exported = await crypto.subtle.exportKey("raw", key);
+  return Array.from(new Uint8Array(exported)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function switchAuthTab(tab) {
+  isSignUpMode = (tab === 'signup');
+  document.getElementById('tab-login-btn').className = isSignUpMode ? 'btn btn-sm' : 'btn btn-sm btn-primary';
+  document.getElementById('tab-signup-btn').className = isSignUpMode ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+  document.getElementById('signup-fields').style.display = isSignUpMode ? 'block' : 'none';
+  document.getElementById('signup-confirm-field').style.display = isSignUpMode ? 'block' : 'none';
+  document.getElementById('auth-submit-btn').textContent = isSignUpMode ? 'CREATE ACCOUNT' : 'ENTER SYSTEM';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display = 'none';
+
+  if (!email || !password) {
+    errEl.textContent = "Please fill in all required fields.";
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (isSignUpMode) {
+    const name = document.getElementById('auth-name').value.trim();
+    const confirm = document.getElementById('auth-password-confirm').value;
+    if (password.length < 8) {
+      errEl.textContent = "Password must be at least 8 characters.";
+      errEl.style.display = 'block';
+      return;
+    }
+    if (password !== confirm) {
+      errEl.textContent = "Passwords do not match.";
+      errEl.style.display = 'block';
+      return;
+    }
+    const existing = await dbTx("users", "readonly", s => s.get(email));
+    if (existing) {
+      errEl.textContent = "An account with this email already exists.";
+      errEl.style.display = 'block';
+      return;
+    }
+    const salt = crypto.getRandomValues(new Uint8Array(16)).join('');
+    const hashedPassword = await hashPassword(password, salt);
+    const newUser = { email, name: name || "Operator", salt, password: hashedPassword, createdAt: new Date().toISOString() };
+    await dbTx("users", "readwrite", s => s.put(newUser));
+    loginUser(newUser);
+  } else {
+    const user = await dbTx("users", "readonly", s => s.get(email));
+    if (!user) {
+      errEl.textContent = "Invalid email or password.";
+      errEl.style.display = 'block';
+      return;
+    }
+    const hashedPassword = await hashPassword(password, user.salt);
+    if (hashedPassword !== user.password) {
+      errEl.textContent = "Invalid email or password.";
+      errEl.style.display = 'block';
+      return;
+    }
+    loginUser(user);
+  }
+}
+
+function loginUser(user) {
+  currentUser = user;
+  localStorage.setItem("SENTRY_SESSION", user.email);
+  document.getElementById('screen-auth').classList.remove('active');
+  document.getElementById('bottom-nav').style.display = 'flex';
+  document.getElementById('settings-name').value = user.name;
+  logActivity("AUTHENTICATION", `Operator ${user.name} logged into system.`);
+  switchTab('dashboard');
+  checkBackupStatus();
+}
+
+function handleLogout() {
+  localStorage.removeItem("SENTRY_SESSION");
+  currentUser = null;
+  document.getElementById('bottom-nav').style.display = 'none';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-auth').classList.add('active');
+}
+
+async function deleteAccount() {
+  if (confirm("CRITICAL WARNING: This will permanently delete your account and ALL associated local operational data. Continue?")) {
+    await dbTx("users", "readwrite", s => s.delete(currentUser.email));
+    const stores = ["guards", "sites", "shifts", "patrols", "incidents", "activity"];
+    for (let st of stores) {
+      await dbTx(st, "readwrite", s => s.clear());
+    }
+    handleLogout();
+  }
+}
+
+/* ==================== AUDIT ACTIVITY LOG ENGINE ==================== */
+async function logActivity(category, details) {
+  const logItem = {
+    id: "LOG-" + Date.now(),
+    timestamp: new Date().toISOString(),
+    user: currentUser ? currentUser.name : "SYSTEM",
+    category,
+    details
+  };
+  await dbTx("activity", "readwrite", s => s.put(logItem));
+  if (document.getElementById('screen-activity').classList.contains('active')) {
+    renderActivityLog();
+  }
+}
+
+async function renderActivityLog() {
+  const logs = await dbTx("activity", "readonly", s => s.getAll());
+  logs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const container = document.getElementById('activity-log-list');
+  if (logs.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>NO AUDIT LOGS RECORDED</p></div>`;
+    return;
+  }
+  container.innerHTML = logs.map(l => `
+    <div class="list-item">
+      <div>
+        <div style="font-size:11px; font-weight:bold; color:var(--accent-white);">${l.details}</div>
+        <div class="mono" style="font-size:9px; color:var(--text-muted);">${l.category} • BY ${l.user}</div>
+      </div>
+      <div class="mono" style="font-size:9px; color:var(--text-muted);">${new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</div>
+    </div>
+  `).join('');
+}
+
+/* ==================== DASHBOARD & METRICS ==================== */
+async function renderDashboard() {
+  const guards = await dbTx("guards", "readonly", s => s.getAll());
+  const incidents = await dbTx("incidents", "readonly", s => s.getAll());
+  const shifts = await dbTx("shifts", "readonly", s => s.getAll());
+
+  const onDutyCount = guards.filter(g => g.status === 'ON DUTY').length;
+  const openIncidentsCount = incidents.filter(i => i.status === 'OPEN').length;
+
+  document.getElementById('metric-guards-count').textContent = onDutyCount;
+  document.getElementById('metric-incidents-count').textContent = openIncidentsCount;
+
+  const controlNum = localStorage.getItem("SENTRY_CONTROL_NUM") || "";
+  document.getElementById('control-room-num').value = controlNum;
+
+  const activeContainer = document.getElementById('dash-shifts-list');
+  const activeShifts = shifts.filter(s => s.status === 'ACTIVE');
+
+  if (activeShifts.length === 0) {
+    activeContainer.innerHTML = `<div class="empty-state"><p>NO SHIFTS CURRENTLY ACTIVE</p></div>`;
+  } else {
+    activeContainer.innerHTML = activeShifts.map(s => `
+      <div class="list-item">
+        <div>
+          <div style="font-weight:bold; color:var(--accent-white);">${s.guardCallsign} @ ${s.siteName}</div>
+          <div class="mono" style="font-size:10px; color:var(--text-muted);">${s.type} SHIFT (${s.startTime} - ${s.endTime})</div>
+        </div>
+        <span class="status-chip chip-green"><span class="pulse-dot"></span>ON SITE</span>
+      </div>
+    `).join('');
+  }
+}
+
+function saveControlNum(val) {
+  localStorage.setItem("SENTRY_CONTROL_NUM", val);
+}
+
+function callControlNum() {
+  const num = localStorage.getItem("SENTRY_CONTROL_NUM");
+  if (num) window.location.href = `tel:${num}`;
+  else alert("Please configure a Control Room phone number first.");
+}
+
+/* ==================== GUARDS MANAGEMENT ==================== */
+async function renderGuards() {
+  const search = document.getElementById('guard-search').value.toLowerCase();
+  const guards = await dbTx("guards", "readonly", s => s.getAll());
+  const container = document.getElementById('guards-list');
+
+  const filtered = guards.filter(g => 
+    g.name.toLowerCase().includes(search) || 
+    g.callsign.toLowerCase().includes(search) || 
+    g.badge.toLowerCase().includes(search)
+  );
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><p>NO GUARDS RECORDED IN SYSTEM</p></div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(g => `
+    <div class="tactical-card">
+      <div class="card-title">
+        <span>${g.callsign} — ${g.name}</span>
+        <span class="status-chip ${g.status === 'ON DUTY' ? 'chip-green' : 'chip-amber'}">${g.status}</span>
+      </div>
+      <div class="mono" style="font-size:11px; margin-bottom:6px; color:var(--text-muted);">BADGE: ${g.badge} | TEL: +1 (868) ${g.phone}</div>
+      <div style="font-size:11px; margin-bottom:10px; color:var(--text-muted);">POST: ${g.post || 'UNASSIGNED'}</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sm" style="flex:1" onclick="openGuardModal('${g.id}')">EDIT</button>
+        <button class="btn btn-sm" style="flex:1; border-color:var(--primary-red); color:var(--primary-red);" onclick="deleteGuard('${g.id}')">DELETE</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openGuardModal(guardId = null) {
+  let g = { callsign: '', name: '', badge: '', phone: '', post: '', status: 'STANDBY' };
+  if (guardId) {
+    g = await dbTx("guards", "readonly", s => s.get(guardId));
+  }
+  showModal(`
+    <div class="card-title">${guardId ? 'EDIT GUARD RECORD' : 'NEW GUARD REGISTRATION'}</div>
+    <form onsubmit="saveGuard(event, '${guardId || ''}')">
+      <div class="form-group"><label>Callsign / Handle</label><input type="text" id="m-g-callsign" class="mono" required value="${g.callsign}" placeholder="ALPHA-01"></div>
+      <div class="form-group"><label>Full Name</label><input type="text" id="m-g-name" required value="${g.name}"></div>
+      <div class="form-group"><label>Badge Number</label><input type="text" id="m-g-badge" class="mono" required value="${g.badge}"></div>
+      <div class="form-group"><label>Phone (+1 868)</label><input type="tel" id="m-g-phone" required value="${g.phone}" placeholder="700-0000"></div>
+      <div class="form-group"><label>Assigned Post / Location</label><input type="text" id="m-g-post" value="${g.post}"></div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="m-g-status">
+          <option value="STANDBY" ${g.status==='STANDBY'?'selected':''}>STANDBY</option>
+          <option value="ON DUTY" ${g.status==='ON DUTY'?'selected':''}>ON DUTY</option>
+          <option value="OFF" ${g.status==='OFF'?'selected':''}>OFF</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">SAVE RECORD</button>
+        <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveGuard(e, guardId) {
+  e.preventDefault();
+  const id = guardId || "G-" + Date.now();
+  const guard = {
+    id,
+    callsign: document.getElementById('m-g-callsign').value.trim().toUpperCase(),
+    name: document.getElementById('m-g-name').value.trim(),
+    badge: document.getElementById('m-g-badge').value.trim(),
+    phone: document.getElementById('m-g-phone').value.trim(),
+    post: document.getElementById('m-g-post').value.trim(),
+    status: document.getElementById('m-g-status').value
+  };
+  await dbTx("guards", "readwrite", s => s.put(guard));
+  logActivity("GUARDS", `Updated guard file for ${guard.callsign}.`);
+  closeModal();
+  renderGuards();
+}
+
+async function deleteGuard(id) {
+  if (confirm("Delete this guard file permanently?")) {
+    await dbTx("guards", "readwrite", s => s.delete(id));
+    logActivity("GUARDS", `Deleted guard file ID: ${id}`);
+    renderGuards();
+  }
+}
+
+/* ==================== SITES MANAGEMENT ==================== */
+async function renderSites() {
+  const sites = await dbTx("sites", "readonly", s => s.getAll());
+  const container = document.getElementById('sites-list');
+
+  if (sites.length === 0) {
+    container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg><p>NO CLIENT SITES REGISTERED</p></div>`;
+    return;
+  }
+
+  container.innerHTML = sites.map(s => `
+    <div class="tactical-card">
+      <div class="card-title">
+        <span>${s.name}</span>
+        <span class="status-chip chip-amber">${s.region}</span>
+      </div>
+      <div style="font-size:11px; margin-bottom:6px; color:var(--text-muted);">${s.address}</div>
+      <div style="font-size:11px; margin-bottom:6px; color:var(--text-muted);">CONTACT: ${s.contactName} (+1 868 ${s.contactPhone})</div>
+      <div style="font-size:11px; background:var(--bg-input); padding:8px; border-radius:3px; margin-bottom:10px; color:var(--text-main);">
+        <strong>POST INSTRUCTIONS:</strong> ${s.instructions || 'Standard Ops'}
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sm" style="flex:1" onclick="openSiteModal('${s.id}')">EDIT SITE</button>
+        <button class="btn btn-sm" style="flex:1; border-color:var(--primary-red); color:var(--primary-red);" onclick="deleteSite('${s.id}')">DELETE</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openSiteModal(siteId = null) {
+  let site = { name: '', region: 'Port of Spain', address: '', contactName: '', contactPhone: '', instructions: '' };
+  if (siteId) {
+    site = await dbTx("sites", "readonly", s => s.get(siteId));
+  }
+  const regionOptions = TT_REGIONS.map(r => `<option value="${r}" ${site.region===r?'selected':''}>${r}</option>`).join('');
+
+  showModal(`
+    <div class="card-title">${siteId ? 'EDIT CLIENT SITE' : 'REGISTER NEW SITE'}</div>
+    <form onsubmit="saveSite(event, '${siteId || ''}')">
+      <div class="form-group"><label>Site Name</label><input type="text" id="m-s-name" required value="${site.name}"></div>
+      <div class="form-group"><label>Region / Area</label><select id="m-s-region">${regionOptions}</select></div>
+      <div class="form-group"><label>Full Address</label><input type="text" id="m-s-address" required value="${site.address}"></div>
+      <div class="form-group"><label>Site Contact Person</label><input type="text" id="m-s-contact" required value="${site.contactName}"></div>
+      <div class="form-group"><label>Contact Phone (+1 868)</label><input type="tel" id="m-s-phone" required value="${site.contactPhone}"></div>
+      <div class="form-group"><label>Standing Post Instructions</label><textarea id="m-s-inst" rows="3">${site.instructions}</textarea></div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">SAVE SITE</button>
+        <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveSite(e, siteId) {
+  e.preventDefault();
+  const id = siteId || "S-" + Date.now();
+  const site = {
+    id,
+    name: document.getElementById('m-s-name').value.trim(),
+    region: document.getElementById('m-s-region').value,
+    address: document.getElementById('m-s-address').value.trim(),
+    contactName: document.getElementById('m-s-contact').value.trim(),
+    contactPhone: document.getElementById('m-s-phone').value.trim(),
+    instructions: document.getElementById('m-s-inst').value.trim()
+  };
+  await dbTx("sites", "readwrite", s => s.put(site));
+  logActivity("SITES", `Configured client site: ${site.name}`);
+  closeModal();
+  renderSites();
+}
+
+async function deleteSite(id) {
+  if (confirm("Delete this site configuration?")) {
+    await dbTx("sites", "readwrite", s => s.delete(id));
+    logActivity("SITES", `Deleted site ID: ${id}`);
+    renderSites();
+  }
+}
+
+/* ==================== ROSTER & SHIFTS ENGINE ==================== */
+async function renderRoster() {
+  const shifts = await dbTx("shifts", "readonly", s => s.getAll());
+  const container = document.getElementById('roster-list');
+
+  if (shifts.length === 0) {
+    container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg><p>NO SCHEDULED SHIFTS FOUND</p></div>`;
+    return;
+  }
+
+  container.innerHTML = shifts.map(s => `
+    <div class="tactical-card">
+      <div class="card-title">
+        <span>${s.guardCallsign} — ${s.siteName}</span>
+        <span class="status-chip ${s.status === 'ACTIVE' ? 'chip-green' : 'chip-amber'}">${s.status}</span>
+      </div>
+      <div class="mono" style="font-size:11px; margin-bottom:4px;">DATE: ${s.date}</div>
+      <div class="mono" style="font-size:11px; margin-bottom:10px; color:var(--text-muted);">SHIFT: ${s.type} (${s.startTime} - ${s.endTime})</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sm" style="flex:1; border-color:var(--primary-red); color:var(--primary-red);" onclick="deleteShift('${s.id}')">CANCEL SHIFT</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openShiftModal() {
+  const guards = await dbTx("guards", "readonly", s => s.getAll());
+  const sites = await dbTx("sites", "readonly", s => s.getAll());
+
+  if (guards.length === 0 || sites.length === 0) {
+    alert("Please register at least one Guard and one Site before scheduling shifts.");
+    return;
+  }
+
+  const guardOpts = guards.map(g => `<option value="${g.id}|${g.callsign}">${g.callsign} (${g.name})</option>`).join('');
+  const siteOpts = sites.map(s => `<option value="${s.id}|${s.name}">${s.name}</option>`).join('');
+
+  showModal(`
+    <div class="card-title">ASSIGN NEW SHIFT</div>
+    <form onsubmit="saveShift(event)">
+      <div class="form-group"><label>Guard</label><select id="m-sh-guard">${guardOpts}</select></div>
+      <div class="form-group"><label>Site Location</label><select id="m-sh-site">${siteOpts}</select></div>
+      <div class="form-group"><label>Date (DD/MM/YYYY)</label><input type="date" id="m-sh-date" required></div>
+      <div class="form-group">
+        <label>Shift Type</label>
+        <select id="m-sh-type" onchange="toggleShiftTimes(this.value)">
+          <option value="DAY">DAY SHIFT (06:00 - 18:00)</option>
+          <option value="NIGHT">NIGHT SHIFT (18:00 - 06:00)</option>
+          <option value="CUSTOM">CUSTOM SHIFT</option>
+        </select>
+      </div>
+      <div id="custom-time-group" style="display:none; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="form-group"><label>Start Time</label><input type="time" id="m-sh-start" value="06:00"></div>
+        <div class="form-group"><label>End Time</label><input type="time" id="m-sh-end" value="18:00"></div>
+      </div>
+      <div id="clash-warning" style="display:none; color:var(--primary-red); font-size:10px; font-weight:bold; margin-bottom:10px;">
+        ⚠️ WARNING: Guard is already assigned to a shift on this date!
+      </div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">SCHEDULE SHIFT</button>
+        <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+      </div>
+    </form>
+  `);
+}
+
+function toggleShiftTimes(val) {
+  document.getElementById('custom-time-group').style.display = (val === 'CUSTOM') ? 'grid' : 'none';
+}
+
+async function saveShift(e) {
+  e.preventDefault();
+  const [guardId, guardCallsign] = document.getElementById('m-sh-guard').value.split('|');
+  const [siteId, siteName] = document.getElementById('m-sh-site').value.split('|');
+  const dateVal = document.getElementById('m-sh-date').value;
+  const type = document.getElementById('m-sh-type').value;
+
+  let startTime = "06:00", endTime = "18:00";
+  if (type === 'NIGHT') { startTime = "18:00"; endTime = "06:00"; }
+  else if (type === 'CUSTOM') {
+    startTime = document.getElementById('m-sh-start').value;
+    endTime = document.getElementById('m-sh-end').value;
+  }
+
+  // Clash detection
+  const existingShifts = await dbTx("shifts", "readonly", s => s.getAll());
+  const clash = existingShifts.find(s => s.guardId === guardId && s.date === dateVal);
+  if (clash) {
+    document.getElementById('clash-warning').style.display = 'block';
+    return;
+  }
+
+  const shift = {
+    id: "SH-" + Date.now(),
+    guardId, guardCallsign, siteId, siteName,
+    date: dateVal, type, startTime, endTime,
+    status: 'ACTIVE'
+  };
+
+  await dbTx("shifts", "readwrite", s => s.put(shift));
+  logActivity("ROSTER", `Assigned ${guardCallsign} to ${siteName} (${dateVal})`);
+  closeModal();
+  renderRoster();
+}
+
+async function deleteShift(id) {
+  if (confirm("Cancel this scheduled shift?")) {
+    await dbTx("shifts", "readwrite", s => s.delete(id));
+    logActivity("ROSTER", `Cancelled shift ID: ${id}`);
+    renderRoster();
+  }
+}
+
+/* ==================== PATROLS MANAGEMENT ==================== */
+async function renderPatrols() {
+  const patrols = await dbTx("patrols", "readonly", s => s.getAll());
+  const container = document.getElementById('patrols-list');
+
+  if (patrols.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>NO PATROL ROUTES CONFIGURED</p></div>`;
+    return;
+  }
+
+  container.innerHTML = patrols.map(p => `
+    <div class="tactical-card">
+      <div class="card-title">
+        <span>${p.routeName} @ ${p.siteName}</span>
+        <span class="status-chip chip-amber">${p.checkpoints.length} CHECKPOINTS</span>
+      </div>
+      <div style="margin-bottom:10px;">
+        ${p.checkpoints.map(c => `
+          <div style="display:flex; justify-content:space-between; font-size:11px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span>📍 ${c.name}</span>
+            <span class="mono">${c.lastLog || 'PENDING'}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sm btn-primary" style="flex:1" onclick="logPatrolCheck('${p.id}')">LOG CHECKPOINT</button>
+        <button class="btn btn-sm" style="border-color:var(--primary-red); color:var(--primary-red);" onclick="deletePatrol('${p.id}')">DELETE</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openPatrolModal() {
+  const sites = await dbTx("sites", "readonly", s => s.getAll());
+  if (sites.length === 0) {
+    alert("Please register at least one Site first.");
+    return;
+  }
+  const siteOpts = sites.map(s => `<option value="${s.id}|${s.name}">${s.name}</option>`).join('');
+
+  showModal(`
+    <div class="card-title">CREATE PATROL ROUTE</div>
+    <form onsubmit="savePatrol(event)">
+      <div class="form-group"><label>Site Location</label><select id="m-p-site">${siteOpts}</select></div>
+      <div class="form-group"><label>Route Identifier</label><input type="text" id="m-p-name" placeholder="e.g. Perimeter Sweep Alpha" required></div>
+      <div class="form-group"><label>Checkpoints (Comma-Separated)</label><input type="text" id="m-p-pts" placeholder="Main Gate, North Fence, Guard House" required></div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">SAVE ROUTE</button>
+        <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+      </div>
+    </form>
+  `);
+}
+
+async function savePatrol(e) {
+  e.preventDefault();
+  const [siteId, siteName] = document.getElementById('m-p-site').value.split('|');
+  const routeName = document.getElementById('m-p-name').value.trim();
+  const ptsRaw = document.getElementById('m-p-pts').value.split(',');
+
+  const checkpoints = ptsRaw.map(p => ({ name: p.trim(), lastLog: null }));
+
+  const patrol = { id: "PTR-" + Date.now(), siteId, siteName, routeName, checkpoints };
+  await dbTx("patrols", "readwrite", s => s.put(patrol));
+  logActivity("PATROLS", `Created patrol route ${routeName} at ${siteName}`);
+  closeModal();
+  renderPatrols();
+}
+
+async function logPatrolCheck(patrolId) {
+  const patrol = await dbTx("patrols", "readonly", s => s.get(patrolId));
+  const options = patrol.checkpoints.map((c, idx) => `<option value="${idx}">${c.name} (${c.lastLog || 'NOT LOGGED'})</option>`).join('');
+
+  showModal(`
+    <div class="card-title">RECORD CHECKPOINT PASS</div>
+    <form onsubmit="saveCheckpointLog(event, '${patrolId}')">
+      <div class="form-group"><label>Select Checkpoint</label><select id="m-cp-idx">${options}</select></div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">MARK LOGGED</button>
+        <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveCheckpointLog(e, patrolId) {
+  e.preventDefault();
+  const idx = document.getElementById('m-cp-idx').value;
+  const patrol = await dbTx("patrols", "readonly", s => s.get(patrolId));
+  const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  patrol.checkpoints[idx].lastLog = timeStr;
+  await dbTx("patrols", "readwrite", s => s.put(patrol));
+  logActivity("PATROLS", `Checkpoint [${patrol.checkpoints[idx].name}] logged on ${patrol.routeName}`);
+  closeModal();
+  renderPatrols();
+}
+
+async function deletePatrol(id) {
+  if (confirm("Delete this patrol route?")) {
+    await dbTx("patrols", "readwrite", s => s.delete(id));
+    logActivity("PATROLS", `Deleted patrol ID: ${id}`);
+    renderPatrols();
+  }
+}
+
+/* ==================== INCIDENT REPORTS ENGINE ==================== */
+async function renderIncidents() {
+  const incidents = await dbTx("incidents", "readonly", s => s.getAll());
+  const container = document.getElementById('incidents-list');
+
+  if (incidents.length === 0) {
+    container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><p>NO INCIDENTS REPORTED</p></div>`;
+    return;
+  }
+
+  incidents.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  container.innerHTML = incidents.map(i => `
+    <div class="tactical-card" style="${i.severity === 'CRITICAL' ? 'border-color:var(--primary-red);' : ''}">
+      <div class="card-title">
+        <span class="mono" style="color:var(--primary-red);">${i.incidentNumber}</span>
+        <span class="status-chip ${i.severity === 'CRITICAL' ? 'chip-red' : 'chip-amber'}">${i.severity}</span>
+      </div>
+      <div style="font-weight:bold; margin-bottom:4px; color:var(--accent-white);">${i.type} @ ${i.siteName}</div>
+      <div class="mono" style="font-size:10px; color:var(--text-muted); margin-bottom:8px;">TIME: ${new Date(i.timestamp).toLocaleString()} | GUARD: ${i.reportingGuard}</div>
+      <div style="font-size:12px; margin-bottom:10px; background:var(--bg-input); padding:8px; border-radius:3px;">${i.description}</div>
+      ${i.photo ? `<img src="${i.photo}" style="width:100%; max-height:150px; object-fit:cover; border-radius:3px; margin-bottom:10px;">` : ''}
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sm" style="flex:1" onclick="shareIncident('${i.id}')">SHARE / PRINT</button>
+        ${i.status === 'OPEN' ? `<button class="btn btn-sm" style="flex:1; border-color:var(--signal-green); color:var(--signal-green);" onclick="closeIncident('${i.id}')">CLOSE INCIDENT</button>` : `<span class="status-chip chip-green">RESOLVED</span>`}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openIncidentModal(isSos = false) {
+  const sites = await dbTx("sites", "readonly", s => s.getAll());
+  const guards = await dbTx("guards", "readonly", s => s.getAll());
+
+  const siteOpts = sites.length ? sites.map(s => `<option value="${s.name}">${s.name}</option>`).join('') : '<option value="UNSPECIFIED">UNSPECIFIED SITE</option>';
+  const guardOpts = guards.length ? guards.map(g => `<option value="${g.callsign}">${g.callsign} (${g.name})</option>`).join('') : '<option value="CONTROL ROOM">CONTROL ROOM</option>';
+
+  showModal(`
+    <div class="card-title" style="${isSos ? 'color:var(--primary-red);' : ''}">${isSos ? '🚨 LOG CRITICAL SOS INCIDENT' : 'LOG INCIDENT REPORT'}</div>
+    <form onsubmit="saveIncident(event)">
+      <div class="form-group">
+        <label>Severity Level</label>
+        <select id="m-i-sev">
+          <option value="CRITICAL" ${isSos?'selected':''}>CRITICAL / EMERGENCY</option>
+          <option value="HIGH">HIGH</option>
+          <option value="MEDIUM" ${!isSos?'selected':''}>MEDIUM</option>
+          <option value="LOW">LOW / INFORMATIONAL</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Incident Type</label><input type="text" id="m-i-type" placeholder="e.g. Perimeter Breach, Fire, Theft" required value="${isSos ? 'CRITICAL PANIC ALARM' : ''}"></div>
+      <div class="form-group"><label>Site Location</label><select id="m-i-site">${siteOpts}</select></div>
+      <div class="form-group"><label>Reporting Guard / Callsign</label><select id="m-i-guard">${guardOpts}</select></div>
+      <div class="form-group"><label>Detailed Description</label><textarea id="m-i-desc" rows="3" required placeholder="Describe what occurred..."></textarea></div>
+      <div class="form-group"><label>Attach Photo (Camera / Gallery)</label><input type="file" id="m-i-photo" accept="image/*" capture="environment"></div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">SUBMIT REPORT</button>
+        <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+      </div>
+    </form>
+  `);
+}
+
+async function saveIncident(e) {
+  e.preventDefault();
+  const year = new Date().getFullYear();
+  const existing = await dbTx("incidents", "readonly", s => s.getAll());
+  const yearIncidents = existing.filter(i => i.incidentNumber && i.incidentNumber.includes(`TT-${year}`));
+  const seq = String(yearIncidents.length + 1).padStart(4, '0');
+  const incidentNumber = `TT-${year}-${seq}`;
+
+  const photoFile = document.getElementById('m-i-photo').files[0];
+  let photoBase64 = null;
+
+  if (photoFile) {
+    photoBase64 = await new Promise((res) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.readAsDataURL(photoFile);
+    });
+  }
+
+  const incident = {
+    id: "INC-" + Date.now(),
+    incidentNumber,
+    severity: document.getElementById('m-i-sev').value,
+    type: document.getElementById('m-i-type').value.trim(),
+    siteName: document.getElementById('m-i-site').value,
+    reportingGuard: document.getElementById('m-i-guard').value,
+    description: document.getElementById('m-i-desc').value.trim(),
+    photo: photoBase64,
+    timestamp: new Date().toISOString(),
+    status: 'OPEN'
+  };
+
+  await dbTx("incidents", "readwrite", s => s.put(incident));
+  logActivity("INCIDENTS", `Logged Incident ${incidentNumber} (${incident.severity})`);
+  closeModal();
+  renderIncidents();
+  renderDashboard();
+}
+
+async function closeIncident(id) {
+  const inc = await dbTx("incidents", "readonly", s => s.get(id));
+  inc.status = 'CLOSED';
+  await dbTx("incidents", "readwrite", s => s.put(inc));
+  logActivity("INCIDENTS", `Resolved Incident ${inc.incidentNumber}`);
+  renderIncidents();
+  renderDashboard();
+}
+
+async function shareIncident(id) {
+  const inc = await dbTx("incidents", "readonly", s => s.get(id));
+  const shareText = `[SENTRY TT INCIDENT REPORT]\nID: ${inc.incidentNumber}\nSEVERITY: ${inc.severity}\nTYPE: ${inc.type}\nSITE: ${inc.siteName}\nGUARD: ${inc.reportingGuard}\nTIME: ${new Date(inc.timestamp).toLocaleString()}\nDETAILS: ${inc.description}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `Incident Report ${inc.incidentNumber}`,
+        text: shareText
+      });
+    } catch (e) { window.print(); }
+  } else {
+    window.print();
+  }
+}
+
+/* ==================== BACKUP & RESTORE ENGINE ==================== */
+async function checkBackupStatus() {
+  const lastBackup = localStorage.getItem("SENTRY_LAST_BACKUP");
+  if (lastBackup) {
+    const days = (Date.now() - parseInt(lastBackup, 10)) / (1000 * 60 * 60 * 24);
+    if (days >= 7) document.getElementById('backup-reminder').style.display = 'block';
+  }
+}
+
+async function exportData() {
+  const backup = {};
+  const stores = ["guards", "sites", "shifts", "patrols", "incidents", "activity"];
+  for (let st of stores) {
+    backup[st] = await dbTx(st, "readonly", s => s.getAll());
+  }
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `SENTRY_TT_BACKUP_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+
+  localStorage.setItem("SENTRY_LAST_BACKUP", Date.now().toString());
+  document.getElementById('backup-reminder').style.display = 'none';
+  logActivity("SYSTEM", "Exported system data backup JSON.");
+}
+
+async function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      const stores = ["guards", "sites", "shifts", "patrols", "incidents", "activity"];
+      for (let st of stores) {
+        if (data[st]) {
+          await dbTx(st, "readwrite", s => s.clear());
+          for (let item of data[st]) {
+            await dbTx(st, "readwrite", s => s.put(item));
+          }
+        }
+      }
+      alert("Data import successful!");
+      logActivity("SYSTEM", "Imported system backup file.");
+      location.reload();
+    } catch (err) {
+      alert("Invalid backup file format.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ==================== USER PROFILE & SETTINGS ==================== */
+async function updateProfileName() {
+  const newName = document.getElementById('settings-name').value.trim();
+  if (!newName) return;
+  currentUser.name = newName;
+  await dbTx("users", "readwrite", s => s.put(currentUser));
+  alert("Profile name updated.");
+  logActivity("PROFILE", `Updated operator name to ${newName}`);
+}
+
+async function updatePassword() {
+  const newPass = document.getElementById('settings-pass').value;
+  if (newPass.length < 8) {
+    alert("Password must be at least 8 characters.");
+    return;
+  }
+  currentUser.password = await hashPassword(newPass, currentUser.salt);
+  await dbTx("users", "readwrite", s => s.put(currentUser));
+  alert("Password updated successfully.");
+  document.getElementById('settings-pass').value = "";
+  logActivity("PROFILE", "Changed operator account password.");
+}
+
+function toggleNightOps() {
+  document.body.classList.toggle('night-ops');
+}
+
+/* ==================== UI / MODAL / NAVIGATION HELPERS ==================== */
+function showModal(contentHtml) {
+  document.getElementById('modal-content').innerHTML = contentHtml;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const activeScreen = document.getElementById(`screen-${tabName}`);
+  if (activeScreen) activeScreen.classList.add('active');
+
+  const navIndex = ['dashboard', 'guards', 'roster', 'incidents', 'settings'].indexOf(tabName);
+  if (navIndex !== -1) {
+    document.querySelectorAll('.nav-btn')[navIndex].classList.add('active');
+  }
+
+  if (tabName === 'dashboard') renderDashboard();
+  if (tabName === 'guards') renderGuards();
+  if (tabName === 'sites') renderSites();
+  if (tabName === 'roster') renderRoster();
+  if (tabName === 'patrols') renderPatrols();
+  if (tabName === 'incidents') renderIncidents();
+  if (tabName === 'activity') renderActivityLog();
+}
+
+/* ==================== CLOCK & INITIALIZATION ==================== */
+function startClock() {
+  setInterval(() => {
+    const now = new Date();
+    document.getElementById('clock-display').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+  }, 1000);
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const pwaBtn = document.getElementById('pwa-install-btn');
+  if (pwaBtn) pwaBtn.style.display = 'block';
+});
+
+function triggerPWAInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  startClock();
+  await initDB();
+
+  // Register SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  // Restore Session
+  const savedEmail = localStorage.getItem("SENTRY_SESSION");
+  if (savedEmail) {
+    const user = await dbTx("users", "readonly", s => s.get(savedEmail));
+    if (user) {
+      loginUser(user);
+      return;
+    }
+  }
+
+  // Fallback to Auth Screen
+  document.getElementById('screen-auth').classList.add('active');
+});
+</script>
+</body>
+</html>
